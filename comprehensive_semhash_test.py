@@ -97,7 +97,7 @@ print(sys.path)
 
 
 # !python -m spacy download en_core_web_lg
-nlp=spacy.load('en_core_web_lg')
+nlp=spacy.load('en_core_web_sm')
 print('Running')
 
 # for hyper_bench in ['AskUbuntu', 'Chatbot', 'WebApplication']:
@@ -682,7 +682,7 @@ for benchmark_dataset, (oversample, synonym_extra_samples, augment_extra_samples
                 (GridSearchCV(knn,parameters_knn, cv=5),"gridsearchknn"),
                 #(Perceptron(n_iter=50), "Perceptron"),
                 (GridSearchCV(MLPClassifier(activation='tanh'),parameters_mlp, cv=5),"gridsearchmlp"),
-                (PassiveAggressiveClassifier(n_iter=50), "Passive-Aggressive"),
+                (PassiveAggressiveClassifier(max_iter=50), "Passive-Aggressive"),
                 (GridSearchCV(RandomForestClassifier(n_estimators=10),parameters_RF, cv=5),"gridsearchRF")
         ]:
 
@@ -719,7 +719,7 @@ for benchmark_dataset, (oversample, synonym_extra_samples, augment_extra_samples
             results.append(result)
 
             # Train SGD model
-            result = benchmark(SGDClassifier(alpha=.0001, n_iter=50,
+            result = benchmark(SGDClassifier(alpha=.0001, max_iter=50,
                                                    penalty=penalty),
                                      X_train, y_train, X_test, y_test, target_names,
                                      feature_names=feature_names)
@@ -728,7 +728,7 @@ for benchmark_dataset, (oversample, synonym_extra_samples, augment_extra_samples
         # Train SGD with Elastic Net penalty
         #print('=' * 80)
         #print("Elastic-Net penalty")
-        results.append(benchmark(SGDClassifier(alpha=.0001, n_iter=50,
+        results.append(benchmark(SGDClassifier(alpha=.0001, max_iter=50,
                                                penalty="elasticnet"),
                                  X_train, y_train, X_test, y_test, target_names,
                                  feature_names=feature_names))
