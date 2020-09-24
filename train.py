@@ -4,9 +4,12 @@ import sklearn
 import sklearn.metrics
 
 from time import time
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.linear_model import RidgeClassifier
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
 
 import xgboost as xgb
 
@@ -16,11 +19,9 @@ class SemHashClassifier:
         self.intent_dict = intent_dict
         self.id2intent = {v: k for k, v in intent_dict.items()}
         self.nlp = spacy.load('en_core_web_sm')
-        self.vectorizer = CountVectorizer(ngram_range=(2, 4), analyzer='char')
-        # self.vectorizer = CountVectorizer(analyzer='word', ngram_range=(2, 4))
+        self.vectorizer = CountVectorizer(analyzer='word')
 
         # self.vectorizer = TfidfVectorizer(analyzer='word')
-        # self.vectorizer = TfidfVectorizer(analyzer='char')
 
     def tokenize(self, doc):
         """
@@ -70,7 +71,22 @@ class SemHashClassifier:
         self.vectorizer.fit(X_train_semhash)
         train_feat = self.vectorizer.transform(X_train_semhash).toarray()
         # self.clf = MultinomialNB(alpha=.01)
-        self.clf = xgb.XGBClassifier(n_estimators=80, max_depth=1, subsample=0.8)
+        # self.clf = xgb.XGBClassifier(n_estimators=80, max_depth=1, subsample=0.8)
+        # self.clf = RidgeClassifier(alpha=1.0, class_weight=None, copy_X=True, fit_intercept=True,
+        #         max_iter=None, normalize=False, random_state=None,
+        #         solver='lsqr', tol=0.01)
+        # self.clf = LinearSVC(C=1.0, class_weight=None, dual=False, fit_intercept=True,
+        #                      intercept_scaling=1, loss='squared_hinge', max_iter=1000,
+        #                      multi_class='ovr', penalty='l2', random_state=None, tol=0.001,
+        #                      verbose=0)
+        # self.clf = LinearSVC()
+
+        svm = LinearSVC(C=1.0, class_weight=None, dual=False, fit_intercept=True,
+                        intercept_scaling=1, loss='squared_hinge', max_iter=1000,
+                        multi_class='ovr', penalty='l2', random_state=None, tol=0.001,
+                        verbose=0)
+        self.clf = CalibratedClassifierCV(svm)
+
         t0 = time()
         self.clf.fit(train_feat, y_train)
         train_time = time() - t0
@@ -99,7 +115,13 @@ class SemHashClassifier:
         semhash_feat = self.preprocess([text])
         final_feat = self.vectorizer.transform(semhash_feat).toarray()
         pred = self.clf.predict(final_feat)[0]
-        return {"intent_id": pred, "intent_name": self.id2intent[pred]}
+        return {"intent_id": pred, "intent": self.id2intent[pred]}
+
+    def predict_proba(self, text):
+        semhash_feat = self.preprocess([text])
+        final_feat = self.vectorizer.transform(semhash_feat).toarray()
+        pred = self.clf.predict_proba(final_feat)[0]
+        return [{"intent": self.id2intent[i], "prob": prob} for i, prob in enumerate(pred)]
 
 
 if __name__ == '__main__':
@@ -142,4 +164,8 @@ if __name__ == '__main__':
 
     model.evaluate(X_test_raw, y_test_raw)
 
-    print(model.predict("Which map will you suggest?"))
+    # print(model.predict("Which map will you suggest?"))
+    # print(model.predict("can you give me some advice on which map to use"))
+
+    print(model.predict_proba("Which map will you suggest?"))
+    print(model.predict_proba("can you give me some advice on which map to use"))
